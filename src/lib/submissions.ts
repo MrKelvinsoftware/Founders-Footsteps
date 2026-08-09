@@ -21,7 +21,7 @@ export type Submission = {
   status: SubmissionStatus;
   total?: number;
   currency?: string;
-  customer?: { firstName: string; lastName: string; email: string; phone: string };
+  customer?: { firstName: string; lastName: string; email: string; phone: string; whatsapp?: string };
   summary?: string;
   payload: Record<string, unknown>;
 };

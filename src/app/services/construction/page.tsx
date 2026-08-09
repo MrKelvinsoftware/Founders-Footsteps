@@ -91,6 +91,26 @@ const ROOFING_EXTRAS = [
   { name: "Heavy Rain / Snow Guards", price: 7500 },
 ];
 
+const ROOFING_SERVICE_TYPES = [
+  { id: "new-roof", name: "New Roof Installation", description: "Complete new roofing from scratch" },
+  { id: "repair", name: "Roof Repair", description: "Fix leaks, damaged sheets, replace sections" },
+  { id: "replacement", name: "Full Roof Replacement", description: "Remove old roof and install new" },
+  { id: "maintenance", name: "Roof Maintenance", description: "Inspection, cleaning, waterproofing" },
+];
+
+const ROOF_REPAIR_ISSUES = [
+  "Leaking roof",
+  "Missing or damaged sheets",
+  "Damaged gutters/fascia",
+  "Sagging roof structure",
+  "Rust/corrosion",
+  "Poor drainage",
+  "Storm damage",
+  "Termite/insect damage",
+  "Broken ridge cap",
+  "Ceiling damage from leak",
+];
+
 const GENERAL_FEATURES = [
   "Swimming Pool", "Generator House", "Gate House", "Driver's Room", "Guest Room",
   "Balcony", "Walk-in Closet", "Home Office", "Store Room", "Garden/Landscape"
@@ -120,6 +140,9 @@ export default function ConstructionPage() {
     roofSheet: "",
     roofExtras: [] as string[],
     roofAreaSqm: "",
+    roofServiceType: "",
+    roofRepairIssues: [] as string[],
+    roofRepairDescription: "",
     extensionType: "",
     extensionSize: "",
     budgetRange: "",
@@ -128,6 +151,7 @@ export default function ConstructionPage() {
     lastName: "",
     email: "",
     phone: "",
+    whatsapp: "",
     preferredContact: "phone",
   });
 
@@ -198,6 +222,30 @@ export default function ConstructionPage() {
       return { total: Math.round(base), substructure: Math.round(base * 0.45), finishing: Math.round(base * 0.35), furnishing: Math.round(base * 0.1), utilities: Math.round(base * 0.1), features: 0, floorArea: sqm };
     }
 
+    if (f.projectType === "painting") {
+      const areaCount = f.renovationAreas.length || 1;
+      const base = areaCount * 8000;
+      return { total: Math.round(base), substructure: 0, finishing: Math.round(base * 0.7), furnishing: Math.round(base * 0.3), utilities: 0, features: 0, floorArea: 0 };
+    }
+
+    if (f.projectType === "plumbing") {
+      const areaCount = f.renovationAreas.length || 1;
+      const base = areaCount * 12000;
+      return { total: Math.round(base), substructure: Math.round(base * 0.4), finishing: Math.round(base * 0.3), furnishing: Math.round(base * 0.2), utilities: Math.round(base * 0.1), features: 0, floorArea: 0 };
+    }
+
+    if (f.projectType === "fence-wall") {
+      const sqm = parseInt(f.extensionSize) || 50;
+      const base = sqm * 1200;
+      return { total: Math.round(base), substructure: Math.round(base * 0.5), finishing: Math.round(base * 0.3), furnishing: Math.round(base * 0.1), utilities: Math.round(base * 0.1), features: 0, floorArea: sqm };
+    }
+
+    if (f.projectType === "tiling") {
+      const sqm = parseInt(f.extensionSize) || 40;
+      const base = sqm * 350;
+      return { total: Math.round(base), substructure: 0, finishing: Math.round(base * 0.6), furnishing: Math.round(base * 0.4), utilities: 0, features: 0, floorArea: sqm };
+    }
+
     return { total: 0, substructure: 0, finishing: 0, furnishing: 0, utilities: 0, features: 0, floorArea: 0 };
   }, [f]);
 
@@ -263,9 +311,13 @@ export default function ConstructionPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
                 { id: "new-construction", name: "New Home Construction", icon: Home, from: 320000 },
-                { id: "renovation", name: "Full Home Renovation", icon: Wrench, from: 90000 },
-                { id: "extension", name: "Home Extension", icon: Layers, from: 120000 },
-                { id: "roofing", name: "Roofing Only", icon: Shield, from: 40000 },
+                { id: "renovation", name: "Home Renovation", icon: Wrench, from: 5000 },
+                { id: "extension", name: "Home Extension", icon: Layers, from: 50000 },
+                { id: "roofing", name: "Roofing & Repairs", icon: Shield, from: 5000 },
+                { id: "painting", name: "Painting & Finishing", icon: Layers, from: 5000 },
+                { id: "plumbing", name: "Plumbing & Electrical", icon: Wrench, from: 5000 },
+                { id: "fence-wall", name: "Fence Wall / Compound", icon: Shield, from: 15000 },
+                { id: "tiling", name: "Tiling & Flooring", icon: Layers, from: 8000 },
               ].map((o) => (
                 <button key={o.id} type="button" onClick={() => set("projectType", o.id)} className={`p-5 rounded-2xl border-2 text-left transition-all ${f.projectType === o.id ? "border-blue-500 bg-blue-50 shadow-md" : "border-slate-200 hover:border-slate-300"}`}>
                   <div className="flex items-center gap-3">
@@ -339,6 +391,35 @@ export default function ConstructionPage() {
           {f.projectType === "roofing" && (
             <section className="space-y-5">
               <h2 className="font-display text-xl text-slate-900 mb-4">Roofing specifications</h2>
+              
+              {/* Roofing Service Type */}
+              <div>
+                <label className="text-xs font-semibold text-slate-600 uppercase tracking-widest block mb-2">What do you need?</label>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {ROOFING_SERVICE_TYPES.map((r) => (
+                    <button key={r.id} type="button" onClick={() => set("roofServiceType", r.id)} className={`p-3 rounded-xl border-2 text-left text-sm transition ${f.roofServiceType === r.id ? "border-blue-500 bg-blue-50" : "border-slate-200 hover:border-slate-300"}`}>
+                      <p className="font-semibold text-slate-900">{r.name}</p>
+                      <p className="text-[11px] text-slate-500 mt-1">{r.description}</p>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Repair-specific issues */}
+              {(f.roofServiceType === "repair" || f.roofServiceType === "maintenance") && (
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 uppercase tracking-widest block mb-2">What issues are you facing?</label>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {ROOF_REPAIR_ISSUES.map((issue) => (
+                      <button key={issue} type="button" onClick={() => toggle("roofRepairIssues", issue)} className={`px-3 py-2 rounded-xl border text-sm transition ${f.roofRepairIssues.includes(issue) ? "border-red-500 bg-red-50 text-red-700" : "border-slate-200 text-slate-700 hover:border-slate-300"}`}>
+                        {issue}
+                      </button>
+                    ))}
+                  </div>
+                  <textarea value={f.roofRepairDescription} onChange={(e) => set("roofRepairDescription", e.target.value)} rows={3} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500 resize-none" placeholder="Describe the roofing issue in detail... (e.g. leaking in the master bedroom, water comes through when it rains heavily)" />
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-600 uppercase tracking-widest block mb-1.5"><MapPin className="w-3.5 h-3.5 inline mr-1" /> Location</label>
@@ -454,6 +535,10 @@ export default function ConstructionPage() {
               <label className="text-xs font-semibold text-slate-600 uppercase tracking-widest block mb-1.5"><DollarSign className="w-3.5 h-3.5 inline mr-1" /> Budget range</label>
               <select value={f.budgetRange} onChange={(e) => set("budgetRange", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500">
                 <option value="">Select</option>
+                <option value="5k-20k">GH₵5,000 – GH₵20,000</option>
+                <option value="20k-50k">GH₵20,000 – GH₵50,000</option>
+                <option value="50k-100k">GH₵50,000 – GH₵100,000</option>
+                <option value="100k-200k">GH₵100,000 – GH₵200,000</option>
                 <option value="200k-500k">GH₵200,000 – GH₵500,000</option>
                 <option value="500k-1m">GH₵500,000 – GH₵1,000,000</option>
                 <option value="1m-2m">GH₵1,000,000 – GH₵2,000,000</option>
@@ -473,6 +558,50 @@ export default function ConstructionPage() {
             </div>
           </section>
 
+          {/* Painting/Plumbing/Tiling/Fence sections */}
+          {(f.projectType === "painting" || f.projectType === "plumbing" || f.projectType === "tiling") && (
+            <section>
+              <h2 className="font-display text-xl text-slate-900 mb-4">
+                {f.projectType === "painting" ? "Areas to paint" : f.projectType === "plumbing" ? "Plumbing & Electrical work" : "Tiling areas"}
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">
+                {RENOVATION_AREAS.map((a) => (
+                  <button key={a} type="button" onClick={() => toggle("renovationAreas", a)} className={`p-3 rounded-xl border-2 text-center text-sm font-medium transition ${f.renovationAreas.includes(a) ? "border-blue-500 bg-blue-50 text-blue-700" : "border-slate-200 text-slate-700 hover:border-slate-300"}`}>{a}</button>
+                ))}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 uppercase tracking-widest block mb-1.5"><MapPin className="w-3.5 h-3.5 inline mr-1" /> Location</label>
+                  <input value={f.landLocation} onChange={(e) => set("landLocation", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500" placeholder="Property address" />
+                </div>
+                {f.projectType === "tiling" && (
+                  <div>
+                    <label className="text-xs font-semibold text-slate-600 uppercase tracking-widest block mb-1.5"><Ruler className="w-3.5 h-3.5 inline mr-1" /> Area (sqm)</label>
+                    <input type="number" value={f.extensionSize} onChange={(e) => set("extensionSize", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500" placeholder="e.g. 40" />
+                  </div>
+                )}
+              </div>
+              <textarea value={f.renovationDescription} onChange={(e) => set("renovationDescription", e.target.value)} rows={3} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500 resize-none mt-4" placeholder="Describe what you need done..." />
+            </section>
+          )}
+
+          {f.projectType === "fence-wall" && (
+            <section>
+              <h2 className="font-display text-xl text-slate-900 mb-4">Fence / Compound Wall</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 uppercase tracking-widest block mb-1.5"><MapPin className="w-3.5 h-3.5 inline mr-1" /> Location</label>
+                  <input value={f.landLocation} onChange={(e) => set("landLocation", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500" placeholder="Property address" />
+                </div>
+                <div>
+                  <label className="text-xs font-semibold text-slate-600 uppercase tracking-widest block mb-1.5"><Ruler className="w-3.5 h-3.5 inline mr-1" /> Wall length (meters)</label>
+                  <input type="number" value={f.extensionSize} onChange={(e) => set("extensionSize", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500" placeholder="e.g. 50" />
+                </div>
+              </div>
+              <textarea value={f.renovationDescription} onChange={(e) => set("renovationDescription", e.target.value)} rows={3} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500 resize-none mt-4" placeholder="Include gate, pillars, or any specific requirements..." />
+            </section>
+          )}
+
           {/* Contact */}
           <section>
             <h2 className="font-display text-xl text-slate-900 mb-4">Your details</h2>
@@ -481,6 +610,7 @@ export default function ConstructionPage() {
               <input required placeholder="Last name" value={f.lastName} onChange={(e) => set("lastName", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500" />
               <input required type="email" placeholder="Email" value={f.email} onChange={(e) => set("email", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500" />
               <input required type="tel" placeholder="Phone" value={f.phone} onChange={(e) => set("phone", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500" />
+              <input type="tel" placeholder="WhatsApp (for estimate & invoice)" value={f.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500 md:col-span-2" />
             </div>
           </section>
 
