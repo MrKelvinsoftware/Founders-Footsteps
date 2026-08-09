@@ -193,8 +193,8 @@ export default function MarketplaceClient({
       </section>
 
       {/* Body */}
-      <div className="container mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-8">
-        <aside className="space-y-8">
+      <div className="container mx-auto px-4 py-10 grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-8 items-start">
+        <aside className="space-y-8 lg:sticky lg:top-24 lg:self-start">
           <div>
             <h3 className="font-display text-lg text-slate-900 mb-4 flex items-center gap-2"><ShoppingBag className="w-4 h-4" /> Categories</h3>
             <div className="space-y-1">

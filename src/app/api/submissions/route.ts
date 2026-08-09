@@ -2,6 +2,8 @@ import { db } from "@/db";
 import { submissions, products, services } from "@/db/schema";
 import { desc, eq, and, sql } from "drizzle-orm";
 import { generateOrderNumber, generateBookingNumber } from "@/lib/otp";
+import { sendReceipt } from "@/lib/receipt";
+import { sendInboxMessage } from "@/lib/inbox";
 
 export const dynamic = "force-dynamic";
 
@@ -136,9 +138,45 @@ export async function POST(req: Request) {
         email: customer?.email,
         phone: customer?.phone,
         summary: summary || trackingNumber,
-        payload: { ...payload, trackingNumber },
+        payload: { 
+          ...payload, 
+          trackingNumber,
+          whatsapp: customer?.whatsapp || payload?.whatsapp,
+        },
       })
       .returning();
+
+    // Send receipt via email and/or WhatsApp
+    const customerName = `${customer?.firstName || ""} ${customer?.lastName || ""}`.trim() || "Customer";
+    const items = type === "marketplace" && payload?.items 
+      ? (payload.items as Array<{ name: string; quantity: number; price: number }>)
+      : undefined;
+
+    let receiptResult;
+    if (customer?.email || customer?.phone || customer?.whatsapp) {
+      try {
+        receiptResult = await sendReceipt({
+          trackingNumber,
+          type: type === "marketplace" ? "order" : "booking",
+          customerName,
+          customerEmail: customer?.email,
+          customerPhone: customer?.phone,
+          customerWhatsApp: customer?.whatsapp || payload?.whatsapp,
+          items,
+          serviceName: payload?.serviceName as string,
+          serviceDate: payload?.date as string,
+          serviceTime: payload?.time as string,
+          subtotal: payload?.subtotal as number,
+          total: total || 0,
+          currency: currency || "GHS",
+          paymentMethod: payload?.paymentMethod as string,
+          notes: payload?.notes as string,
+        });
+        console.log(`[RECEIPT] Sent for ${trackingNumber}:`, receiptResult);
+      } catch (err) {
+        console.error("[RECEIPT] Error sending:", err);
+      }
+    }
 
     return Response.json({
       ok: true,
@@ -153,6 +191,7 @@ export async function POST(req: Request) {
         summary: row.summary,
         payload: row.payload || {},
         createdAt: row.createdAt.toISOString(),
+        receipt: receiptResult,
       },
     });
   } catch (e) {
