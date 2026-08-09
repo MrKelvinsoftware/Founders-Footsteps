@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { submissions } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { submissions, products, services } from "@/db/schema";
+import { eq, sql } from "drizzle-orm";
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -12,9 +12,55 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return Response.json({ ok: false, error: "status is required" }, { status: 400 });
     }
 
+    // Get current submission to check type and previous status
+    const [current] = await db
+      .select()
+      .from(submissions)
+      .where(eq(submissions.id, id))
+      .limit(1);
+
+    if (!current) {
+      return Response.json({ ok: false, error: "Submission not found" }, { status: 404 });
+    }
+
+    // If cancelling, restore stock/slots
+    if (status === "cancelled" && current.status !== "cancelled") {
+      const payload = current.payload as Record<string, unknown> || {};
+
+      if (current.type === "marketplace" && payload.items) {
+        // Restore product stock
+        const items = payload.items as Array<{ productId: string; quantity: number }>;
+        for (const item of items) {
+          if (item.productId) {
+            await db
+              .update(products)
+              .set({
+                stock: sql`${products.stock} + ${item.quantity}`,
+                updatedAt: new Date(),
+              })
+              .where(eq(products.id, item.productId));
+            
+            console.log(`[STOCK] Restored ${item.quantity} units for product ${item.productId}`);
+          }
+        }
+      } else if (payload.serviceId) {
+        // Restore service slot
+        await db
+          .update(services)
+          .set({
+            availableSlots: sql`LEAST(${services.maxSlots}, ${services.availableSlots} + 1)`,
+            updatedAt: new Date(),
+          })
+          .where(eq(services.id, payload.serviceId as string));
+        
+        console.log(`[SLOTS] Restored 1 slot for service ${payload.serviceId}`);
+      }
+    }
+
     await db.update(submissions).set({ status, updatedAt: new Date() }).where(eq(submissions.id, id));
-    return Response.json({ ok: true });
+    return Response.json({ ok: true, message: status === "cancelled" ? "Cancelled and inventory restored" : "Status updated" });
   } catch (e) {
+    console.error("[SUBMISSION] Update error:", e);
     return Response.json({ ok: false, error: e instanceof Error ? e.message : "Server error" }, { status: 500 });
   }
 }

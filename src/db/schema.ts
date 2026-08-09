@@ -118,6 +118,10 @@ export const services = pgTable("services", {
   price: decimal("price", { precision: 10, scale: 2 }),
   currency: varchar("currency", { length: 3 }).default("USD"),
   duration: integer("duration"),
+  // Slot/capacity management
+  maxSlots: integer("max_slots").default(10), // Maximum available slots per day/time
+  availableSlots: integer("available_slots").default(10), // Current available slots
+  slotDuration: integer("slot_duration").default(60), // Duration in minutes per slot
   images: jsonb("images").$type<string[]>(),
   features: jsonb("features").$type<string[]>(),
   metadata: jsonb("metadata").$type<Record<string, unknown>>(),
