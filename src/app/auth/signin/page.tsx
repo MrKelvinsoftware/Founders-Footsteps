@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { Mail, Lock, Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowLeft, Phone } from "lucide-react";
 export default function SignInPage() {
   const router = useRouter();
   const { login } = useAuth();
@@ -20,10 +20,10 @@ export default function SignInPage() {
       <div className="w-full max-w-md">
         <Link href="/" className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-8"><ArrowLeft className="w-5 h-5" /> Back to Home</Link>
         <h2 className="text-3xl font-bold text-slate-900 mb-2">Sign In</h2>
-        <p className="text-slate-600 mb-8">Welcome back! Please enter your details.</p>
+        <p className="text-slate-600 mb-8">Welcome back! Sign in with your email or phone number.</p>
         {error && <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6">{error}</div>}
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div><label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label><div className="relative"><Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" /><input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your email" required /></div></div>
+          <div><label className="block text-sm font-medium text-slate-700 mb-2">Email or Phone Number</label><div className="relative"><Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" /><input type="text" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Email or phone number" required /></div></div>
           <div><label className="block text-sm font-medium text-slate-700 mb-2">Password</label><div className="relative"><Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" /><input type={showPassword ? "text" : "password"} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full pl-12 pr-12 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Enter your password" required /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">{showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}</button></div></div>
           <button type="submit" disabled={isLoading} className="btn-primary w-full py-4 text-lg disabled:opacity-50">{isLoading ? "Signing in..." : "Sign In"}</button>
         </form>

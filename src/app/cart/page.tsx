@@ -1,11 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { ShoppingCart, Trash2, Plus, Minus, ArrowRight, CreditCard, CheckCircle2, Shield, MapPin, Truck } from "lucide-react";
+import { ShoppingCart, Trash2, Plus, Minus, ArrowRight, CreditCard, CheckCircle2, Shield, MapPin, Truck, LogIn } from "lucide-react";
 import { addSubmission } from "@/lib/submissions";
 import { pay } from "@/lib/payments";
 import { useAuth } from "@/components/AuthProvider";
-import NotifyStatus from "@/components/NotifyStatus";
 
 type CartItem = { id: string; name: string; slug: string; price: number; quantity: number; image: string };
 
@@ -17,60 +16,49 @@ const REGIONS = [
 ];
 
 const SHIPPING_RATES: Record<string, number> = {
-  "Greater Accra": 0,
-  "Ashanti": 45,
-  "Western": 60, "Eastern": 40, "Central": 35,
+  "Greater Accra": 0, "Ashanti": 45, "Western": 60, "Eastern": 40, "Central": 35,
   "Northern": 80, "Volta": 55, "Upper East": 90, "Upper West": 95,
   "Bono": 65, "Bono East": 70, "Ahafo": 60, "Savannah": 85,
   "North East": 90, "Oti": 60, "Western North": 65,
 };
+
+const DEFAULT_FREE_DELIVERY_THRESHOLD = 500;
 
 export default function CartPage() {
   const { user } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
   const [ordered, setOrdered] = useState(false);
   const [trackingNumber, setTrackingNumber] = useState("");
-  const [checkoutName, setCheckoutName] = useState("");
-  const [checkoutEmail, setCheckoutEmail] = useState("");
-  const [checkoutPhone, setCheckoutPhone] = useState("");
-  const [checkoutWhatsApp, setCheckoutWhatsApp] = useState("");
   const [deliveryRegion, setDeliveryRegion] = useState("Greater Accra");
   const [deliveryAddress, setDeliveryAddress] = useState("");
-  const [showCheckout, setShowCheckout] = useState(false);
   const [paying, setPaying] = useState(false);
+  const [freeThreshold, setFreeThreshold] = useState(DEFAULT_FREE_DELIVERY_THRESHOLD);
 
   useEffect(() => { try { setItems(JSON.parse(localStorage.getItem("ff_cart") || "[]")); } catch { setItems([]); } }, []);
   useEffect(() => { localStorage.setItem("ff_cart", JSON.stringify(items)); }, [items]);
-
-  // Auto-fill from logged-in user
   useEffect(() => {
-    if (user) {
-      setCheckoutName(`${user.firstName || ""} ${user.lastName || ""}`.trim());
-      setCheckoutEmail(user.email || "");
-    }
-  }, [user]);
+    fetch("/api/admin/settings")
+      .then(r => r.json())
+      .then(d => { if (d.freeDeliveryThreshold) setFreeThreshold(d.freeDeliveryThreshold); })
+      .catch(() => {});
+  }, []);
 
   const updateQty = (id: string, delta: number) => setItems((prev) => prev.map((i) => i.id === id ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i));
   const remove = (id: string) => setItems((prev) => prev.filter((i) => i.id !== id));
   const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
-  const shipping = subtotal > 500 ? 0 : (SHIPPING_RATES[deliveryRegion] || 35);
+  const shipping = subtotal >= freeThreshold ? 0 : (SHIPPING_RATES[deliveryRegion] || 35);
   const total = subtotal + shipping;
 
-  const checkout = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handlePay = () => {
+    if (!user) return;
+    if (!deliveryAddress.trim()) { alert("Please enter a delivery address"); return; }
     setPaying(true);
-    pay({ amountGHS: total, email: checkoutEmail, name: checkoutName, onSuccess: async (reference) => {
+    const email = user.email;
+    const name = `${user.firstName || ""} ${user.lastName || ""}`.trim();
+    pay({ amountGHS: total, email, name, onSuccess: async (reference) => {
       const result = await addSubmission({
-        type: "marketplace",
-        total,
-        currency: "GHS",
-        customer: {
-          firstName: checkoutName.split(" ")[0] || "Guest",
-          lastName: checkoutName.split(" ").slice(1).join(" ") || "",
-          email: checkoutEmail,
-          phone: checkoutPhone,
-          whatsapp: checkoutWhatsApp || checkoutPhone,
-        },
+        type: "marketplace", total, currency: "GHS",
+        customer: { firstName: user.firstName || "Guest", lastName: user.lastName || "", email, phone: "" },
         summary: `${items.reduce((s, i) => s + i.quantity, 0)} item(s)`,
         payload: {
           items: items.map(i => ({ productId: i.id, name: i.name, quantity: i.quantity, price: i.price })),
@@ -79,8 +67,7 @@ export default function CartPage() {
         }
       });
       setTrackingNumber((result as Record<string, unknown>)?.trackingNumber as string || "");
-      setItems([]); localStorage.removeItem("ff_cart"); setOrdered(true); setShowCheckout(false);
-      setPaying(false);
+      setItems([]); localStorage.removeItem("ff_cart"); setOrdered(true); setPaying(false);
     }});
   };
 
@@ -95,8 +82,7 @@ export default function CartPage() {
             <p className="text-2xl font-bold text-slate-900 tracking-wider">{trackingNumber}</p>
           </div>
         )}
-        <p className="text-slate-600 mb-4">A confirmation email and receipt has been sent to your inbox.</p>
-        <div className="bg-slate-50 rounded-2xl p-4 mb-8"><NotifyStatus email={checkoutEmail} phone={checkoutPhone} /></div>
+        <p className="text-slate-600 mb-6">Receipt and tracking details have been sent to your inbox and email.</p>
         <Link href="/marketplace" className="btn-primary px-6 py-3 inline-flex items-center gap-2">Continue shopping <ArrowRight className="w-4 h-4" /></Link>
       </div>
     </div>
@@ -148,13 +134,9 @@ export default function CartPage() {
                 <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
                   <MapPin className="w-4 h-4" /> Delivery Region
                 </label>
-                <select
-                  value={deliveryRegion}
-                  onChange={(e) => setDeliveryRegion(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm"
-                >
+                <select value={deliveryRegion} onChange={(e) => setDeliveryRegion(e.target.value)} className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm">
                   {REGIONS.map((r) => (
-                    <option key={r} value={r}>{r} {SHIPPING_RATES[r] === 0 ? "(Free delivery)" : `(GH₵${SHIPPING_RATES[r]})`}</option>
+                    <option key={r} value={r}>{r} {SHIPPING_RATES[r] === 0 ? "(Free)" : `(GH₵${SHIPPING_RATES[r]})`}</option>
                   ))}
                 </select>
               </div>
@@ -162,36 +144,37 @@ export default function CartPage() {
               <div className="space-y-2 text-sm pb-4 border-b border-slate-100">
                 <div className="flex justify-between text-slate-600"><span>Subtotal ({items.reduce((s,i)=>s+i.quantity,0)} items)</span><span>GH₵{subtotal.toLocaleString()}</span></div>
                 <div className="flex justify-between text-slate-600">
-                  <span className="flex items-center gap-1"><Truck className="w-3.5 h-3.5" /> Shipping to {deliveryRegion}</span>
+                  <span className="flex items-center gap-1"><Truck className="w-3.5 h-3.5" /> Shipping</span>
                   <span>{shipping === 0 ? <span className="text-green-600 font-medium">Free</span> : `GH₵${shipping}`}</span>
                 </div>
-                {subtotal > 500 && shipping === 0 && (
-                  <p className="text-xs text-green-600">🎉 Free delivery on orders above GH₵500!</p>
+                {subtotal >= freeThreshold && shipping === 0 && (
+                  <p className="text-xs text-green-600">🎉 Free delivery on orders above GH₵{freeThreshold.toLocaleString()}!</p>
+                )}
+                {subtotal < freeThreshold && (
+                  <p className="text-xs text-slate-500">Add GH₵{(freeThreshold - subtotal).toLocaleString()} more for free delivery</p>
                 )}
               </div>
               <div className="flex justify-between items-center py-4"><span className="font-semibold">Total</span><span className="font-display text-2xl text-slate-900">GH₵{total.toLocaleString()}</span></div>
-              {!showCheckout ? (
-                <button onClick={() => setShowCheckout(true)} className="w-full py-3.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-semibold flex items-center justify-center gap-2 transition"><CreditCard className="w-4 h-4" /> Proceed to checkout</button>
-              ) : (
-                <form onSubmit={checkout} className="space-y-3">
-                  {user ? (
-                    <div className="bg-blue-50 rounded-lg p-3 text-sm">
-                      <p className="font-medium text-blue-900">👤 {user.firstName} {user.lastName}</p>
-                      <p className="text-blue-700 text-xs">{user.email}</p>
-                    </div>
-                  ) : (
-                    <>
-                      <input required value={checkoutName} onChange={(e) => setCheckoutName(e.target.value)} placeholder="Full name" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm" />
-                      <input required type="email" value={checkoutEmail} onChange={(e) => setCheckoutEmail(e.target.value)} placeholder="Email" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm" />
-                      <input required type="tel" value={checkoutPhone} onChange={(e) => setCheckoutPhone(e.target.value)} placeholder="Phone number" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm" />
-                    </>
-                  )}
+              
+              {user ? (
+                <div className="space-y-3">
+                  <div className="bg-blue-50 rounded-lg p-3 text-sm">
+                    <p className="font-medium text-blue-900">👤 {user.firstName} {user.lastName}</p>
+                    <p className="text-blue-700 text-xs">{user.email}</p>
+                  </div>
                   <input required value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Delivery address" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm" />
-                  <button type="submit" disabled={paying} className="w-full py-3.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
-                    {paying ? "Processing…" : `Pay & Order · GH₵${total.toLocaleString()}`}
+                  <button onClick={handlePay} disabled={paying || !deliveryAddress.trim()} className="w-full py-3.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    {paying ? "Processing…" : `Pay GH₵${total.toLocaleString()}`}
                   </button>
-                  <p className="text-xs text-center text-slate-500">Payment required before order is placed</p>
-                </form>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-600 text-center">Sign in to checkout — no forms needed!</p>
+                  <Link href="/auth/signin" className="w-full py-3.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-semibold flex items-center justify-center gap-2">
+                    <LogIn className="w-4 h-4" /> Sign in to checkout
+                  </Link>
+                </div>
               )}
               <div className="mt-4 flex items-center gap-2 text-xs text-slate-500"><Shield className="w-3.5 h-3.5" /> Secure Paystack checkout · MoMo · Card · Bank</div>
             </div>

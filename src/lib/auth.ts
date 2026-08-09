@@ -16,7 +16,7 @@ export type SafeUser = {
   role: "customer" | "admin" | "staff";
 };
 
-function toSafeUser(row: typeof users.$inferSelect): SafeUser {
+export function toSafeUser(row: typeof users.$inferSelect): SafeUser {
   return {
     id: row.id,
     email: row.email,
@@ -43,6 +43,23 @@ export async function ensureAdminSeeded(): Promise<void> {
 export async function findUserByEmail(email: string) {
   const rows = await db.select().from(users).where(eq(users.email, email.toLowerCase().trim())).limit(1);
   return rows[0] ?? null;
+}
+
+export async function findUserByPhone(phone: string) {
+  const rows = await db.select().from(users).where(eq(users.phone, phone.trim())).limit(1);
+  return rows[0] ?? null;
+}
+
+export async function findUserByEmailOrPhone(identifier: string) {
+  // Check if it looks like an email
+  if (identifier.includes("@")) {
+    return findUserByEmail(identifier);
+  }
+  // Otherwise try phone
+  const byPhone = await findUserByPhone(identifier);
+  if (byPhone) return byPhone;
+  // Fallback: try as email anyway
+  return findUserByEmail(identifier);
 }
 
 export async function verifyPassword(plain: string, hash: string | null): Promise<boolean> {
@@ -72,4 +89,4 @@ export async function createUser(data: {
   return toSafeUser(row);
 }
 
-export { toSafeUser };
+
