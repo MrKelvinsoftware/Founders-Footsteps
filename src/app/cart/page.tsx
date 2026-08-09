@@ -1,0 +1,109 @@
+"use client";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { ShoppingCart, Trash2, Plus, Minus, ArrowRight, CreditCard, CheckCircle2, Shield } from "lucide-react";
+import { addSubmission } from "@/lib/submissions";
+import { pay } from "@/lib/payments";
+import NotifyStatus from "@/components/NotifyStatus";
+
+type CartItem = { id: string; name: string; slug: string; price: number; quantity: number; image: string };
+
+export default function CartPage() {
+  const [items, setItems] = useState<CartItem[]>([]);
+  const [ordered, setOrdered] = useState(false);
+  const [checkoutName, setCheckoutName] = useState("");
+  const [checkoutEmail, setCheckoutEmail] = useState("");
+  const [checkoutPhone, setCheckoutPhone] = useState("");
+  const [showCheckout, setShowCheckout] = useState(false);
+
+  useEffect(() => { try { setItems(JSON.parse(localStorage.getItem("ff_cart") || "[]")); } catch { setItems([]); } }, []);
+  useEffect(() => { localStorage.setItem("ff_cart", JSON.stringify(items)); }, [items]);
+
+  const updateQty = (id: string, delta: number) => setItems((prev) => prev.map((i) => i.id === id ? { ...i, quantity: Math.max(1, i.quantity + delta) } : i));
+  const remove = (id: string) => setItems((prev) => prev.filter((i) => i.id !== id));
+  const subtotal = items.reduce((s, i) => s + i.price * i.quantity, 0);
+  const shipping = subtotal > 500 ? 0 : 35;
+  const total = subtotal + shipping;
+
+  const checkout = (e: React.FormEvent) => {
+    e.preventDefault();
+    pay({ amountGHS: total, email: checkoutEmail, name: checkoutName, onSuccess: async (reference) => {
+      await addSubmission({ type: "marketplace", total, currency: "GHS", customer: { firstName: checkoutName.split(" ")[0] || "Guest", lastName: checkoutName.split(" ").slice(1).join(" ") || "", email: checkoutEmail, phone: checkoutPhone }, summary: `${items.reduce((s, i) => s + i.quantity, 0)} item(s)`, payload: { items, subtotal, shipping, total, reference } });
+      setItems([]); localStorage.removeItem("ff_cart"); setOrdered(true); setShowCheckout(false);
+    }});
+  };
+
+  if (ordered) return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+      <div className="bg-white rounded-2xl shadow-xl p-10 max-w-lg w-full text-center">
+        <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6"><CheckCircle2 className="w-10 h-10 text-emerald-600" /></div>
+        <h2 className="font-display text-3xl text-slate-900 mb-3">Order received</h2>
+        <div className="bg-slate-50 rounded-2xl p-4 mb-8"><NotifyStatus email={checkoutEmail} phone={checkoutPhone} /></div>
+        <Link href="/marketplace" className="btn-primary px-6 py-3 inline-flex items-center gap-2">Continue shopping <ArrowRight className="w-4 h-4" /></Link>
+      </div>
+    </div>
+  );
+
+  if (items.length === 0) return (
+    <div className="min-h-screen bg-slate-50 py-20">
+      <div className="container mx-auto px-4 text-center">
+        <div className="bg-white rounded-2xl shadow-sm p-12 max-w-lg mx-auto">
+          <ShoppingCart className="w-20 h-20 text-slate-300 mx-auto mb-6" />
+          <h2 className="font-display text-3xl text-slate-900 mb-3">Your cart is empty</h2>
+          <Link href="/marketplace" className="btn-primary px-6 py-3 inline-flex items-center gap-2">Browse marketplace <ArrowRight className="w-4 h-4" /></Link>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-slate-50 py-10">
+      <div className="container mx-auto px-4 max-w-6xl">
+        <h1 className="font-display text-4xl text-slate-900 mb-8">Your cart</h1>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-3">
+            {items.map((item) => (
+              <div key={item.id} className="bg-white rounded-2xl p-4 flex gap-4 border border-slate-200/70">
+                <div className="w-24 h-24 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0"><img src={item.image} alt={item.name} className="w-full h-full object-cover" /></div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-slate-900 line-clamp-1">{item.name}</p>
+                  <p className="text-orange-600 font-bold mt-1">GH₵{item.price.toLocaleString()}</p>
+                  <div className="flex items-center gap-3 mt-3">
+                    <div className="flex items-center gap-1 border border-slate-200 rounded-lg">
+                      <button onClick={() => updateQty(item.id, -1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-50"><Minus className="w-3 h-3" /></button>
+                      <span className="w-8 text-center text-sm font-semibold">{item.quantity}</span>
+                      <button onClick={() => updateQty(item.id, 1)} className="w-8 h-8 flex items-center justify-center hover:bg-slate-50"><Plus className="w-3 h-3" /></button>
+                    </div>
+                    <button onClick={() => remove(item.id)} className="text-red-600 text-sm hover:underline flex items-center gap-1"><Trash2 className="w-3.5 h-3.5" /> Remove</button>
+                  </div>
+                </div>
+                <p className="font-display text-lg text-slate-900">GH₵{(item.price * item.quantity).toLocaleString()}</p>
+              </div>
+            ))}
+          </div>
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-2xl p-6 border border-slate-200/70 sticky top-24">
+              <h3 className="font-display text-xl text-slate-900 mb-4">Order summary</h3>
+              <div className="space-y-2 text-sm pb-4 border-b border-slate-100">
+                <div className="flex justify-between text-slate-600"><span>Subtotal</span><span>GH₵{subtotal.toLocaleString()}</span></div>
+                <div className="flex justify-between text-slate-600"><span>Shipping</span><span>{shipping === 0 ? "Free" : `GH₵${shipping}`}</span></div>
+              </div>
+              <div className="flex justify-between items-center py-4"><span className="font-semibold">Total</span><span className="font-display text-2xl text-slate-900">GH₵{total.toLocaleString()}</span></div>
+              {!showCheckout ? (
+                <button onClick={() => setShowCheckout(true)} className="w-full py-3.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-semibold flex items-center justify-center gap-2 transition"><CreditCard className="w-4 h-4" /> Proceed to checkout</button>
+              ) : (
+                <form onSubmit={checkout} className="space-y-3">
+                  <input required value={checkoutName} onChange={(e) => setCheckoutName(e.target.value)} placeholder="Full name" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm" />
+                  <input required type="email" value={checkoutEmail} onChange={(e) => setCheckoutEmail(e.target.value)} placeholder="Email" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm" />
+                  <input required type="tel" value={checkoutPhone} onChange={(e) => setCheckoutPhone(e.target.value)} placeholder="Phone" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm" />
+                  <button type="submit" className="w-full py-3.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-semibold">Place order · GH₵{total.toLocaleString()}</button>
+                </form>
+              )}
+              <div className="mt-4 flex items-center gap-2 text-xs text-slate-500"><Shield className="w-3.5 h-3.5" /> Secure checkout · Mobile Money · Card</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
