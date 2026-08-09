@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { Car, Calendar, Users, MapPin, Fuel, Settings2, CheckCircle, ArrowRight, Search, Heart } from "lucide-react";
 import { addSubmission } from "@/lib/submissions";
 import NotifyStatus from "@/components/NotifyStatus";
 import { mergeWithSeed } from "@/lib/contentStore";
 import ServiceInfoBanner from "@/components/ServiceInfoBanner";
+import { useAuth } from "@/components/AuthProvider";
+import { pay } from "@/lib/payments";
 
 const seedCars = [
   { id: "eco", name: "Hyundai Accent", category: "Economy", transmission: "Manual", fuel: "Petrol", seats: 5, luggage: 2, daily: 350, image: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=800&q=80", features: ["AC", "Bluetooth", "Power Windows"] },
@@ -20,6 +22,7 @@ const seedCars = [
 const categories = ["All", "Economy", "Compact", "Sedan", "SUV", "Luxury", "Van"];
 
 export default function CarRentalPage() {
+  const { user } = useAuth();
   const cars = useMemo(() => mergeWithSeed(seedCars, "cars" as any) as typeof seedCars, []);
   const [category, setCategory] = useState("All");
   const [pickupDate, setPickupDate] = useState("");
@@ -59,23 +62,53 @@ export default function CarRentalPage() {
   const [bookedCar, setBookedCar] = useState<typeof seedCars[number] | null>(null);
   const [form, setForm] = useState({ name: "", email: "", phone: "", location: "" });
   const [submitted, setSubmitted] = useState(false);
+  const [paying, setPaying] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setForm((prev) => ({
+        ...prev,
+        name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+      }));
+    }
+  }, [user]);
 
   const submitBooking = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!bookedCar) return;
-    const res = await addSubmission({
-      type: "car-rental",
-      total: bookedCar.daily * days,
-      currency: "GHS",
-      customer: { firstName: form.name.split(" ")[0] || "Guest", lastName: form.name.split(" ").slice(1).join(" "), email: form.email, phone: form.phone },
-      summary: `${bookedCar.name} · ${days} day${days > 1 ? "s" : ""} · pickup ${pickupDate || "TBC"}`,
-      payload: { kind: "car-rental", car: bookedCar.name, category: bookedCar.category, days, pickupDate, returnDate, location: form.location, transmission: bookedCar.transmission },
+    setPaying(true);
+    const totalAmount = bookedCar.daily * days;
+    const customerEmail = user?.email || form.email;
+    const customerName = user ? `${user.firstName} ${user.lastName}` : form.name;
+
+    pay({
+      amountGHS: totalAmount,
+      email: customerEmail,
+      name: customerName,
+      onSuccess: async (reference) => {
+        const res = await addSubmission({
+          type: "car-rental",
+          total: totalAmount,
+          currency: "GHS",
+          customer: { 
+            firstName: user ? user.firstName : (form.name.split(" ")[0] || "Guest"), 
+            lastName: user ? user.lastName : form.name.split(" ").slice(1).join(" "), 
+            email: customerEmail, 
+            phone: user?.phone || form.phone 
+          },
+          summary: `${bookedCar.name} · ${days} day${days > 1 ? "s" : ""} · pickup ${pickupDate || "TBC"}`,
+          payload: { kind: "car-rental", car: bookedCar.name, category: bookedCar.category, days, pickupDate, returnDate, location: form.location, transmission: bookedCar.transmission, reference },
+        });
+        setPaying(false);
+        if (res) {
+          setSubmitted(true);
+        } else {
+          alert("Something went wrong. Please try again.");
+        }
+      },
     });
-    if (res) {
-      setSubmitted(true);
-    } else {
-      alert("Something went wrong. Please try again.");
-    }
   };
 
   return (
@@ -200,11 +233,18 @@ export default function CarRentalPage() {
               <h3 className="font-display text-2xl text-slate-900 mb-1">{bookedCar.name}</h3>
               <p className="text-sm text-slate-500 mb-6">{days} day{days > 1 ? "s" : ""} · Total <span className="font-semibold text-slate-900">GH₵{(bookedCar.daily * days).toLocaleString()}</span></p>
 
-              <div className="space-y-3">
-                <input required placeholder="Full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm" />
-                <input required type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm" />
-                <input required type="tel" placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm" />
-              </div>
+              {user ? (
+                <div className="bg-blue-50 rounded-2xl p-4 mb-4">
+                  <p className="font-semibold text-blue-900">👤 {user.firstName} {user.lastName}</p>
+                  <p className="text-blue-700 text-sm">{user.email}</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <input required placeholder="Full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm" />
+                  <input required type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm" />
+                  <input required type="tel" placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full px-4 py-3 rounded-xl border border-slate-200 text-sm" />
+                </div>
+              )}
 
               <div className="flex gap-2 mt-6">
                 <button type="button" onClick={() => setBookedCar(null)} className="px-4 py-3 rounded-full border border-slate-200 font-semibold text-slate-700">Cancel</button>

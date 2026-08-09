@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Smartphone, Laptop, Tablet, Tv, Camera, Headphones, Wrench, CheckCircle2, ArrowRight, Shield, Clock, Truck } from "lucide-react";
 import { addSubmission } from "@/lib/submissions";
+import { useAuth } from "@/components/AuthProvider";
+import { pay } from "@/lib/payments";
 import NotifyStatus from "@/components/NotifyStatus";
 import ServiceInfoBanner from "@/components/ServiceInfoBanner";
 
@@ -95,6 +97,7 @@ function estimatePrice(brand: string, model: string, kindId: string): number {
 }
 
 export default function TechRepairsPage() {
+  const { user } = useAuth();
   const [type, setType] = useState<DeviceType | null>(null);
   const [brand, setBrand] = useState("");
   const [model, setModel] = useState("");
@@ -104,18 +107,53 @@ export default function TechRepairsPage() {
   const [form, setForm] = useState({ name: "", email: "", phone: "", notes: "" });
   const [submitted, setSubmitted] = useState(false);
 
+  useEffect(() => {
+    if (user) {
+      setForm((prev) => ({
+        ...prev,
+        name: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+        email: user.email || prev.email,
+        phone: user.phone || prev.phone,
+      }));
+    }
+  }, [user]);
+
   const total = useMemo(() => repairs.reduce((s, k) => s + estimatePrice(brand, model, k), 0), [brand, model, repairs]);
   const toggleRepair = (id: string) => setRepairs((p) => p.includes(id) ? p.filter((x) => x !== id) : [...p, id]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const repairListFormatted = repairs.map((k) => {
+      const label = REPAIR_KINDS.find((r) => r.id === k)?.label || k;
+      const price = estimatePrice(brand, model, k);
+      return `${label} (GH₵${price})`;
+    }).join(", ");
+
+    const finalTotal = total + (pickup ? 50 : 0);
+    const customerEmail = user?.email || form.email;
+    const customerName = user ? `${user.firstName} ${user.lastName}` : form.name;
+
     const res = await addSubmission({
       type: "tech-repair",
-      total: total + (pickup ? 50 : 0),
+      total: finalTotal,
       currency: "GHS",
-      customer: { firstName: form.name.split(" ")[0] || "Guest", lastName: form.name.split(" ").slice(1).join(" "), email: form.email, phone: form.phone },
+      customer: { 
+        firstName: user ? user.firstName : (form.name.split(" ")[0] || "Guest"), 
+        lastName: user ? user.lastName : form.name.split(" ").slice(1).join(" "), 
+        email: customerEmail, 
+        phone: user?.phone || form.phone 
+      },
       summary: `Tech repair · ${type} · ${brand} ${model} · ${repairs.length} issue(s)`,
-      payload: { kind: "tech-repair", type, brand, model, repairs: repairs.map((k) => ({ id: k, label: REPAIR_KINDS.find((r) => r.id === k)?.label, price: estimatePrice(brand, model, k) })), pickup, address, notes: form.notes },
+      payload: { 
+        kind: "tech-repair", 
+        type, 
+        brand, 
+        model, 
+        repairs: repairListFormatted, 
+        pickup, 
+        address, 
+        notes: form.notes 
+      },
     });
     if (res) {
       setSubmitted(true);
@@ -218,12 +256,19 @@ export default function TechRepairsPage() {
             <section className="space-y-4 animate-[rise_.3s_ease]">
               <div className="bg-white rounded-2xl border border-slate-200 p-5">
                 <h3 className="font-semibold text-slate-900 mb-3">Your details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <input required placeholder="Full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-violet-500" />
-                  <input required type="tel" placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-violet-500" />
-                  <input required type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="md:col-span-2 w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-violet-500" />
-                  <textarea placeholder="Describe the issue (optional)" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className="md:col-span-2 w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-violet-500 resize-none" />
-                </div>
+                {user ? (
+                  <div className="bg-violet-50 rounded-xl p-4 border border-violet-200">
+                    <p className="font-semibold text-slate-900">👤 {user.firstName} {user.lastName}</p>
+                    <p className="text-slate-600 text-sm">{user.email}</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input required placeholder="Full name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-violet-500" />
+                    <input required type="tel" placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-violet-500" />
+                    <input required type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="md:col-span-2 w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-violet-500" />
+                  </div>
+                )}
+                <textarea placeholder="Describe the issue (optional)" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-violet-500 resize-none mt-3" />
               </div>
               <label className="flex items-start gap-3 p-4 rounded-2xl bg-violet-50 border border-violet-100 cursor-pointer">
                 <input type="checkbox" checked={pickup} onChange={(e) => setPickup(e.target.checked)} className="mt-0.5 w-4 h-4 accent-violet-600" />

@@ -645,30 +645,52 @@ export default function ConstructionPage() {
         <aside className="lg:sticky lg:top-24 self-start">
           <div className="bg-white rounded-3xl border border-slate-200 shadow-lg overflow-hidden">
             <div className="bg-blue-600 text-white px-6 py-4">
-              <p className="text-[10px] uppercase tracking-[0.28em] text-blue-200 font-semibold">Live estimate</p>
+              <div className="inline-block px-2.5 py-1 bg-amber-400 text-slate-950 font-bold text-[10px] uppercase tracking-wider rounded-md mb-2">
+                📍 Final Quote After Site Visitation
+              </div>
+              <p className="text-[10px] uppercase tracking-[0.28em] text-blue-200 font-semibold">Estimated Price</p>
               <p className="font-display text-3xl mt-1">GH₵{estimate.total.toLocaleString()}</p>
             </div>
             <div className="p-6 space-y-3 text-sm">
-              {estimate.floorArea > 0 && (
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <span className="text-slate-600 text-xs">Estimated floor area</span>
-                  <span className="font-semibold text-slate-900 text-sm">{estimate.floorArea} sqm</span>
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-950 font-medium">
+                Note: Original official estimate will be confirmed after site visitation & architectural evaluation.
+              </div>
+              {f.projectType && (
+                <div className="flex justify-between pb-2 border-b border-slate-100 text-xs">
+                  <span className="text-slate-600 font-medium">Selected Service</span>
+                  <span className="font-bold text-slate-900 capitalize">{f.projectType.replace("-", " ")}</span>
                 </div>
               )}
-              <Row label="Substructure & superstructure" value={estimate.substructure} />
-              <Row label="Plumbing, electricals & finishing" value={estimate.finishing} />
-              <Row label="Furnishing & appliances" value={estimate.furnishing} />
-              <Row label="Utilities & external works" value={estimate.utilities} />
-              {estimate.features > 0 && (
-                <div className="border-t border-slate-100 pt-3">
-                  <Row label="Additional features" value={estimate.features} />
+              {estimate.floorArea > 0 && (
+                <div className="flex items-center justify-between pb-2 border-b border-slate-100 text-xs">
+                  <span className="text-slate-600">Floor Area</span>
+                  <span className="font-semibold text-slate-900">{estimate.floorArea} sqm</span>
+                </div>
+              )}
+              {f.features.length > 0 && (
+                <div className="border-t border-slate-100 pt-2 space-y-1">
+                  <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Chosen Features</p>
+                  {f.features.map(feat => (
+                    <div key={feat} className="flex justify-between text-xs text-slate-700">
+                      <span>• {feat}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {f.roofExtras.length > 0 && (
+                <div className="border-t border-slate-100 pt-2 space-y-1">
+                  <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Roofing Add-ons</p>
+                  {f.roofExtras.map(ex => (
+                    <div key={ex} className="flex justify-between text-xs text-slate-700">
+                      <span>• {ex}</span>
+                    </div>
+                  ))}
                 </div>
               )}
               <div className="border-t border-slate-200 pt-3 mt-3">
-                <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-2">Quality tier</p>
-                <p className="font-semibold text-slate-900">{TIERS[f.tier].label}</p>
+                <p className="text-[10px] uppercase tracking-widest text-slate-500 mb-1">Tier</p>
+                <p className="font-semibold text-slate-900 text-xs">{TIERS[f.tier].label}</p>
               </div>
-              <p className="text-[11px] text-slate-500 leading-relaxed">Based on 2026 Ghana market rates. Final cost confirmed after site inspection. 60% deposit to commence work.</p>
             </div>
           </div>
         </aside>

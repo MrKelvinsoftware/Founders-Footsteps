@@ -161,6 +161,10 @@ export default function Navigation() {
               <div className="border-t border-slate-100 my-3" />
               <Link href="/about" className="block px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-50 font-medium" onClick={closeMobile}>About Us</Link>
               <Link href="/contact" className="block px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-50 font-medium" onClick={closeMobile}>Contact</Link>
+              <Link href="/inbox" className="flex items-center justify-between px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-50 font-medium" onClick={closeMobile}>
+                <span className="flex items-center gap-2"><Inbox className="w-5 h-5 text-blue-600" /> Inbox</span>
+                {unreadInbox > 0 && <span className="px-2 py-0.5 text-xs bg-red-100 text-red-600 font-bold rounded-full">{unreadInbox}</span>}
+              </Link>
               <Link href="/favorites" className="block px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-50 font-medium" onClick={closeMobile}>❤️ Favorites</Link>
               <Link href="/cart" className="block px-4 py-3 rounded-xl text-slate-700 hover:bg-slate-50 font-medium" onClick={closeMobile}>🛒 Cart</Link>
               <div className="border-t border-slate-100 my-3" />

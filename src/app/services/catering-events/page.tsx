@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Calendar, Users, Utensils, Wine, Sparkles, CheckCircle2, ArrowRight, Receipt, Minus, Plus } from "lucide-react";
 import { addSubmission } from "@/lib/submissions";
+import { useAuth } from "@/components/AuthProvider";
 import NotifyStatus from "@/components/NotifyStatus";
 import ServiceInfoBanner from "@/components/ServiceInfoBanner";
 
@@ -44,12 +45,28 @@ const SERVICES = [
 const priceOf = (list: { name: string; price: number }[], name: string) => list.find((x) => x.name === name)?.price ?? 0;
 
 export default function CateringEventsPage() {
+  const { user } = useAuth();
   const [f, setF] = useState<F>({
     eventType: "wedding", eventDate: "", eventTime: "", venue: "", numberOfGuests: "80",
-    localDishes: [], continentalDishes: [], softDrinks: [], hardDrinks: [], additionalServices: [],
+    localDishes: ["Jollof Rice & Chicken", "Waakye Special"],
+    continentalDishes: ["Grilled Chicken"],
+    softDrinks: ["Coca Cola", "Juice Pack"],
+    hardDrinks: [],
+    additionalServices: ["Event Decor"],
     firstName: "", lastName: "", email: "", phone: "",
   });
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setF((p) => ({
+        ...p,
+        firstName: user.firstName || p.firstName,
+        lastName: user.lastName || p.lastName,
+        email: user.email || p.email,
+      }));
+    }
+  }, [user]);
 
   const toggle = (key: keyof F, value: string) => {
     setF((prev) => {
@@ -166,12 +183,19 @@ export default function CateringEventsPage() {
           </Section>
 
           <Section n="7" title="Your details">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <input required placeholder="First name" value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} className={inputCls} />
-              <input required placeholder="Last name" value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} className={inputCls} />
-              <input required type="email" placeholder="Email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} className={inputCls} />
-              <input required type="tel" placeholder="Phone" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} className={inputCls} />
-            </div>
+            {user ? (
+              <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
+                <p className="font-semibold text-slate-900">👤 {user.firstName} {user.lastName}</p>
+                <p className="text-slate-600 text-sm">{user.email}</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input required placeholder="First name" value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} className={inputCls} />
+                <input required placeholder="Last name" value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} className={inputCls} />
+                <input required type="email" placeholder="Email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} className={inputCls} />
+                <input required type="tel" placeholder="Phone" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} className={inputCls} />
+              </div>
+            )}
           </Section>
 
           {/* mobile total + submit */}

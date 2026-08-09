@@ -214,7 +214,17 @@ export default function AdminBookingsPage() {
                 <p className="text-xs uppercase tracking-widest text-slate-500 mb-1">Request details</p>
                 {Object.entries(selected.payload).map(([k, v]) => {
                   if (v === "" || v === null || v === undefined) return null;
-                  const val = Array.isArray(v) ? (v as string[]).join(", ") : String(v);
+                  const formatVal = (item: unknown): string => {
+                    if (item === null || item === undefined) return "";
+                    if (typeof item === "object") {
+                      const obj = item as Record<string, unknown>;
+                      if (obj.label) return `${obj.label}${obj.price ? ` (GH₵${obj.price})` : ""}`;
+                      if (obj.name) return `${obj.name}${obj.price ? ` (GH₵${obj.price})` : ""}`;
+                      return Object.entries(obj).map(([subK, subV]) => `${subK}: ${subV}`).join("; ");
+                    }
+                    return String(item);
+                  };
+                  const val = Array.isArray(v) ? v.map(formatVal).join(", ") : formatVal(v);
                   if (!val) return null;
                   return (
                     <div key={k} className="flex justify-between gap-4 text-sm">
