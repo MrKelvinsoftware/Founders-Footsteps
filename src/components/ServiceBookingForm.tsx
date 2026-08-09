@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar, Clock, Users, Mail, Phone, MessageSquare, CheckCircle, Loader2 } from "lucide-react";
+import { useAuth } from "@/components/AuthProvider";
 
 interface ServiceBookingFormProps {
   serviceLineSlug: string;
 }
 
 export default function ServiceBookingForm({ serviceLineSlug }: ServiceBookingFormProps) {
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     service: "",
     startDate: "",
@@ -28,6 +30,18 @@ export default function ServiceBookingForm({ serviceLineSlug }: ServiceBookingFo
   const [trackingNumber, setTrackingNumber] = useState("");
   const [whatsappReceiptUrl, setWhatsappReceiptUrl] = useState("");
   const [error, setError] = useState("");
+
+  // Auto-fill from logged-in user
+  useEffect(() => {
+    if (user) {
+      setFormData((prev) => ({
+        ...prev,
+        firstName: user.firstName || prev.firstName,
+        lastName: user.lastName || prev.lastName,
+        email: user.email || prev.email,
+      }));
+    }
+  }, [user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -244,67 +258,31 @@ export default function ServiceBookingForm({ serviceLineSlug }: ServiceBookingFo
           </select>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            First Name
-          </label>
-          <input
-            type="text"
-            name="firstName"
-            value={formData.firstName}
-            onChange={handleChange}
-            className="search-input"
-            placeholder="John"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            Last Name
-          </label>
-          <input
-            type="text"
-            name="lastName"
-            value={formData.lastName}
-            onChange={handleChange}
-            className="search-input"
-            placeholder="Doe"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            <Mail className="w-4 h-4 inline mr-2" />
-            Email
-          </label>
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleChange}
-            className="search-input"
-            placeholder="john@example.com"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-slate-700 mb-2">
-            <Phone className="w-4 h-4 inline mr-2" />
-            Phone
-          </label>
-          <input
-            type="tel"
-            name="phone"
-            value={formData.phone}
-            onChange={handleChange}
-            className="search-input"
-            placeholder="0261404904"
-            required
-          />
-        </div>
+        {user ? (
+          <div className="md:col-span-2 bg-blue-50 rounded-xl p-4">
+            <p className="font-medium text-blue-900">👤 {user.firstName} {user.lastName}</p>
+            <p className="text-blue-700 text-sm">{user.email}</p>
+          </div>
+        ) : (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">First Name</label>
+              <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} className="search-input" placeholder="John" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Last Name</label>
+              <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} className="search-input" placeholder="Doe" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2"><Mail className="w-4 h-4 inline mr-2" />Email</label>
+              <input type="email" name="email" value={formData.email} onChange={handleChange} className="search-input" placeholder="john@example.com" required />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2"><Phone className="w-4 h-4 inline mr-2" />Phone</label>
+              <input type="tel" name="phone" value={formData.phone} onChange={handleChange} className="search-input" placeholder="0261404904" required />
+            </div>
+          </>
+        )}
 
         <div className="md:col-span-2">
           <label className="block text-sm font-medium text-slate-700 mb-2">

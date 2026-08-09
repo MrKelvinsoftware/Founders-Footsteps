@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Home, MapPin, Calendar, DollarSign, CheckCircle, ArrowRight, Bed, Bath, Car, Ruler, FileText, Layers, Shield, Wrench } from "lucide-react";
 import { addSubmission } from "@/lib/submissions";
+import { useAuth } from "@/components/AuthProvider";
 import NotifyStatus from "@/components/NotifyStatus";
 import ServiceInfoBanner from "@/components/ServiceInfoBanner";
 
@@ -122,6 +123,7 @@ const RENOVATION_AREAS = [
 ];
 
 export default function ConstructionPage() {
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [f, setF] = useState({
     projectType: "",
@@ -162,6 +164,17 @@ export default function ConstructionPage() {
   });
 
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setF((p) => ({
+        ...p,
+        firstName: user.firstName || p.firstName,
+        lastName: user.lastName || p.lastName,
+        email: user.email || p.email,
+      }));
+    }
+  }, [user]);
 
   const estimate = useMemo(() => {
     const rooms = parseInt(f.numberOfRooms) || 0;
@@ -606,10 +619,19 @@ export default function ConstructionPage() {
           <section>
             <h2 className="font-display text-xl text-slate-900 mb-4">Your details</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input required placeholder="First name" value={f.firstName} onChange={(e) => set("firstName", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500" />
-              <input required placeholder="Last name" value={f.lastName} onChange={(e) => set("lastName", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500" />
-              <input required type="email" placeholder="Email" value={f.email} onChange={(e) => set("email", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500" />
-              <input required type="tel" placeholder="Phone" value={f.phone} onChange={(e) => set("phone", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500" />
+              {user ? (
+                <div className="md:col-span-2 bg-blue-50 rounded-xl p-4">
+                  <p className="font-medium text-blue-900">👤 {user.firstName} {user.lastName}</p>
+                  <p className="text-blue-700 text-sm">{user.email}</p>
+                </div>
+              ) : (
+                <>
+                  <input required placeholder="First name" value={f.firstName} onChange={(e) => set("firstName", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500" />
+                  <input required placeholder="Last name" value={f.lastName} onChange={(e) => set("lastName", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500" />
+                  <input required type="email" placeholder="Email" value={f.email} onChange={(e) => set("email", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500" />
+                  <input required type="tel" placeholder="Phone" value={f.phone} onChange={(e) => set("phone", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500" />
+                </>
+              )}
               <input type="tel" placeholder="WhatsApp (for estimate & invoice)" value={f.whatsapp} onChange={(e) => set("whatsapp", e.target.value)} className="w-full px-4 py-2.5 rounded-lg border border-slate-200 text-sm focus:outline-none focus:border-blue-500 md:col-span-2" />
             </div>
           </section>

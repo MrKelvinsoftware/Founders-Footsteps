@@ -174,10 +174,18 @@ export default function CartPage() {
                 <button onClick={() => setShowCheckout(true)} className="w-full py-3.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-semibold flex items-center justify-center gap-2 transition"><CreditCard className="w-4 h-4" /> Proceed to checkout</button>
               ) : (
                 <form onSubmit={checkout} className="space-y-3">
-                  <input required value={checkoutName} onChange={(e) => setCheckoutName(e.target.value)} placeholder="Full name" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm" />
-                  <input required type="email" value={checkoutEmail} onChange={(e) => setCheckoutEmail(e.target.value)} placeholder="Email" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm" />
-                  <input required type="tel" value={checkoutPhone} onChange={(e) => setCheckoutPhone(e.target.value)} placeholder="Phone number" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm" />
-                  <input type="tel" value={checkoutWhatsApp} onChange={(e) => setCheckoutWhatsApp(e.target.value)} placeholder="WhatsApp (for receipt)" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm" />
+                  {user ? (
+                    <div className="bg-blue-50 rounded-lg p-3 text-sm">
+                      <p className="font-medium text-blue-900">👤 {user.firstName} {user.lastName}</p>
+                      <p className="text-blue-700 text-xs">{user.email}</p>
+                    </div>
+                  ) : (
+                    <>
+                      <input required value={checkoutName} onChange={(e) => setCheckoutName(e.target.value)} placeholder="Full name" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm" />
+                      <input required type="email" value={checkoutEmail} onChange={(e) => setCheckoutEmail(e.target.value)} placeholder="Email" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm" />
+                      <input required type="tel" value={checkoutPhone} onChange={(e) => setCheckoutPhone(e.target.value)} placeholder="Phone number" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm" />
+                    </>
+                  )}
                   <input required value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Delivery address" className="w-full px-3 py-2.5 rounded-lg border border-slate-200 text-sm" />
                   <button type="submit" disabled={paying} className="w-full py-3.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white font-semibold disabled:opacity-50 flex items-center justify-center gap-2">
                     {paying ? "Processing…" : `Pay & Order · GH₵${total.toLocaleString()}`}
