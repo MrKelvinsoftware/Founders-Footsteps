@@ -12,10 +12,8 @@ const DEFAULTS = {
 };
 
 export async function GET() {
-  const admin = await requireAdmin();
-  if (!admin) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // GET is intentionally public — the cart page reads the free delivery threshold
+  // No auth required for reading site settings
 
   try {
     const [row] = await db

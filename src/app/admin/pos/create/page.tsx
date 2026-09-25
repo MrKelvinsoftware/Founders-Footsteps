@@ -8,6 +8,7 @@ import {
   Wrench, FileText, Calculator, User, Phone, Mail, MapPin,
   Calendar, Clock, RefreshCw
 } from "lucide-react";
+import { adminFetch } from "@/lib/adminFetch";
 
 type LineItem = {
   description: string;
@@ -156,9 +157,8 @@ export default function CreateReceiptPage() {
         tripDetails: type === "trip_ticket" ? tripDetails : undefined,
       };
 
-      const res = await fetch("/api/admin/pos", {
+      const res = await adminFetch("/api/admin/pos", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 

@@ -14,6 +14,7 @@ import {
   CheckCircle,
   Search
 } from "lucide-react";
+import { adminFetch } from "@/lib/adminFetch";
 
 interface Broadcast {
   id: string;
@@ -71,7 +72,7 @@ export default function AdminInboxPage() {
 
   const fetchBroadcasts = async () => {
     try {
-      const res = await fetch("/api/admin/inbox");
+      const res = await adminFetch("/api/admin/inbox");
       if (res.ok) {
         const data = await res.json();
         setBroadcasts(data.broadcasts || []);
@@ -90,9 +91,8 @@ export default function AdminInboxPage() {
     setSuccess(null);
 
     try {
-      const res = await fetch("/api/admin/inbox", {
+      const res = await adminFetch("/api/admin/inbox", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: messageType,
           title,

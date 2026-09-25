@@ -7,6 +7,7 @@ import {
   Globe, MessageCircle, MapPin, Palette
 } from "lucide-react";
 import ImageUpload from "@/components/ImageUpload";
+import { adminFetch } from "@/lib/adminFetch";
 
 type BrandingData = {
   logo: string;
@@ -48,7 +49,7 @@ export default function AdminBrandingPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/admin/branding")
+    adminFetch("/api/admin/branding")
       .then(r => r.json())
       .then(json => {
         if (json.ok && json.data) setData({ ...defaultBranding, ...json.data });
@@ -58,9 +59,8 @@ export default function AdminBrandingPage() {
   }, []);
 
   const save = async () => {
-    await fetch("/api/admin/branding", {
+    await adminFetch("/api/admin/branding", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
     // Also store in localStorage for client components

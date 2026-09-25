@@ -29,104 +29,103 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 const STORAGE_KEY = "ff_user";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // ── Validate the stored session against the server ───────────────────────
-  const validateSession = useCallback(async (stored: User): Promise<User | null> => {
+  // ── Validate session against server ─────────────────────────────
+  // Always prefers the httpOnly cookie (checked server-side).
+  // Falls back to the localStorage userId/email if the cookie is missing
+  // (e.g. user logged in before the cookie-based auth was added).
+  const validateSession = useCallback(async (stored?: User): Promise<User | null> => {
     try {
       const res = await fetch("/api/auth/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // Send the stored data as a fallback; the server prefers the httpOnly cookie
-        body: JSON.stringify({ userId: stored.id, email: stored.email }),
+        body: JSON.stringify(
+          stored ? { userId: stored.id, email: stored.email } : {}
+        ),
+        // Always send cookies
+        credentials: "include",
       });
+      if (!res.ok) return null;
       const data = await res.json();
       if (data.valid && data.user) return data.user as User;
       return null;
     } catch {
-      // Network error — keep user logged in with stale data rather than force-logout
-      return stored;
+      // Network error — preserve stored user so we don't log out on flaky connection
+      return stored ?? null;
     }
   }, []);
 
-  // ── Bootstrap auth state on mount ────────────────────────────────────────
+  // ── Bootstrap auth on mount ──────────────────────────────────────
   useEffect(() => {
     (async () => {
       try {
-        // First try a cookie-only validation (no body required after first login)
-        const res = await fetch("/api/auth/validate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        });
-        const data = await res.json();
-
-        if (data.valid && data.user) {
-          setUser(data.user as User);
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(data.user));
+        // Step 1 — try validating via cookie alone (no body needed)
+        const cookieUser = await validateSession();
+        if (cookieUser) {
+          setUser(cookieUser);
+          // Sync to localStorage so subsequent refreshes are instant
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(cookieUser));
           return;
         }
 
-        // Cookie miss — try the localStorage fallback
+        // Step 2 — cookie miss, try localStorage fallback
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const stored = JSON.parse(raw) as User;
-          const validated = await validateSession(stored);
-          if (validated) {
-            setUser(validated);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(validated));
-          } else {
-            localStorage.removeItem(STORAGE_KEY);
-          }
+        if (!raw) return;
+        const stored = JSON.parse(raw) as User;
+        const validated = await validateSession(stored);
+        if (validated) {
+          setUser(validated);
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(validated));
+        } else {
+          localStorage.removeItem(STORAGE_KEY);
         }
       } catch {
-        // Ignore — isLoading will be set to false below
+        localStorage.removeItem(STORAGE_KEY);
       } finally {
         setIsLoading(false);
       }
     })();
   }, [validateSession]);
 
-  // ── Login ─────────────────────────────────────────────────────────────────
+  // ── Login ────────────────────────────────────────────────────────
   const login = useCallback(async (email: string, password: string): Promise<User> => {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
+      credentials: "include",
     });
     const json = await res.json();
     if (!json.ok) throw new Error(json.error ?? "Invalid email or password");
-
     const loggedIn = json.data as User;
     setUser(loggedIn);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(loggedIn));
     return loggedIn;
   }, []);
 
-  // ── Logout ────────────────────────────────────────────────────────────────
+  // ── Logout ───────────────────────────────────────────────────────
   const logout = useCallback(async () => {
     try {
-      // Clear the httpOnly session cookie on the server
-      await fetch("/api/auth/logout", { method: "POST" });
+      await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     } catch {
-      // Best-effort
+      // best-effort
     }
     setUser(null);
     localStorage.removeItem(STORAGE_KEY);
   }, []);
 
-  // ── Refresh ───────────────────────────────────────────────────────────────
+  // ── Refresh ──────────────────────────────────────────────────────
   const refreshUser = useCallback(async () => {
     if (!user) return;
-    const validated = await validateSession(user);
-    if (validated) {
-      setUser(validated);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(validated));
+    const updated = await validateSession(user);
+    if (updated) {
+      setUser(updated);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     } else {
       await logout();
     }

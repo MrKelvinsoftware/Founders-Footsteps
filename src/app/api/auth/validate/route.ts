@@ -6,17 +6,23 @@ import { toSafeUser } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
-    // 1. Prefer the httpOnly session cookie (set since the cookie-based login was added)
-    const sessionUser = await getSessionUser();
-    if (sessionUser) {
-      return Response.json({ valid: true, user: sessionUser });
+    // ── 1. Prefer the httpOnly session cookie ───────────────────
+    const cookieUser = await getSessionUser();
+    if (cookieUser) {
+      return Response.json({ valid: true, user: cookieUser });
     }
 
-    // 2. Legacy fallback: client stored userId/email in localStorage and sends it here
-    const body = await req.json().catch(() => ({}));
-    const { userId, email } = body as { userId?: string; email?: string };
+    // ── 2. Legacy fallback: localStorage userId/email in body ───
+    let body: Record<string, string> = {};
+    try {
+      body = await req.json();
+    } catch {
+      // Empty body is fine — just means cookie-only attempt
+    }
 
+    const { userId, email } = body;
     if (!userId || !email) {
+      // No cookie AND no body — not authenticated
       return Response.json({ valid: false, error: "No active session" }, { status: 401 });
     }
 
@@ -29,7 +35,6 @@ export async function POST(req: Request) {
     if (!row) {
       return Response.json({ valid: false, error: "User not found" });
     }
-
     if (row.email.toLowerCase() !== email.toLowerCase()) {
       return Response.json({ valid: false, error: "Session mismatch" });
     }

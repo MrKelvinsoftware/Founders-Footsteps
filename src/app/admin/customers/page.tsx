@@ -7,6 +7,7 @@ import {
   Send, Trash2, AlertTriangle, Clock, CheckCircle, X, RefreshCw,
   MessageSquare, Filter, ChevronDown
 } from "lucide-react";
+import { adminFetch } from "@/lib/adminFetch";
 
 type Customer = {
   id: string;
@@ -52,7 +53,7 @@ export default function AdminCustomersPage() {
       const params = new URLSearchParams();
       if (debouncedSearch) params.set("search", debouncedSearch);
       
-      const res = await fetch(`/api/admin/customers?${params}`);
+      const res = await adminFetch(`/api/admin/customers?${params}`);
       const data = await res.json();
       if (data.ok) {
         setCustomers(data.customers || []);
@@ -81,9 +82,8 @@ export default function AdminCustomersPage() {
 
     setSending(true);
     try {
-      const res = await fetch("/api/admin/customers", {
+      const res = await adminFetch("/api/admin/customers", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "send_message",
           userId: selectedCustomer.id,
@@ -113,9 +113,8 @@ export default function AdminCustomersPage() {
 
     setSending(true);
     try {
-      const res = await fetch("/api/admin/customers", {
+      const res = await adminFetch("/api/admin/customers", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "delete_user",
           userId: selectedCustomer.id,

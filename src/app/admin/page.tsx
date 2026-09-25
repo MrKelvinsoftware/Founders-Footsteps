@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef, useMemo } from "react";
@@ -154,8 +155,7 @@ function LoginPortal() {
       if (loggedInUser.role !== "admin") {
         await logout();
         throw new Error("This account does not have admin access.");
-      }
-      // Redirect to the originally-requested page, or dashboard root
+      }      // Redirect to the originally-requested page, or dashboard root
       const next = searchParams.get("next") ?? "/admin";
       router.replace(next);
     } catch (error) {
@@ -570,7 +570,15 @@ export default function AdminPage() {
   }
 
   if (!user || !isAdmin) {
-    return <LoginPortal />;
+    return (
+      <Suspense fallback={
+        <div className="min-h-screen bg-[#0b0f17] flex items-center justify-center">
+          <div className="w-12 h-12 rounded-xl bg-white text-slate-900 flex items-center justify-center font-bold text-xl animate-pulse">F</div>
+        </div>
+      }>
+        <LoginPortal />
+      </Suspense>
+    );
   }
 
   return <Dashboard user={user} />;

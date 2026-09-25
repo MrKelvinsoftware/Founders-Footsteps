@@ -8,6 +8,7 @@ import {
   Building2, Plane, PartyPopper, Wrench, FileText, Clock, XCircle,
   Mail, Phone, MapPin, RefreshCw
 } from "lucide-react";
+import { adminFetch } from "@/lib/adminFetch";
 
 type Receipt = {
   id: string;
@@ -61,7 +62,7 @@ export default function ReceiptDetailPage({ params }: { params: Promise<{ id: st
 
   const loadReceipt = useCallback(async () => {
     try {
-      const res = await fetch(`/api/admin/pos/${id}`);
+      const res = await adminFetch(`/api/admin/pos/${id}`);
       const data = await res.json();
       if (data.ok) setReceipt(data.receipt);
     } catch (e) {
@@ -79,9 +80,8 @@ export default function ReceiptDetailPage({ params }: { params: Promise<{ id: st
     if (!receipt) return;
     setUpdating(true);
     try {
-      const res = await fetch(`/api/admin/pos/${id}`, {
+      const res = await adminFetch(`/api/admin/pos/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
       const data = await res.json();
@@ -96,7 +96,7 @@ export default function ReceiptDetailPage({ params }: { params: Promise<{ id: st
   const handleDelete = async () => {
     if (!confirm("Delete this receipt? This cannot be undone.")) return;
     try {
-      await fetch(`/api/admin/pos/${id}`, { method: "DELETE" });
+      await adminFetch(`/api/admin/pos/${id}`, { method: "DELETE" });
       router.push("/admin/pos");
     } catch (e) {
       console.error("Failed to delete:", e);

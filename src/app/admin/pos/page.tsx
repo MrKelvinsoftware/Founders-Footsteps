@@ -7,6 +7,7 @@ import {
   Eye, Trash2, Filter, CheckCircle, Clock, XCircle, RefreshCw,
   Building2, Plane, PartyPopper, Wrench, ChevronDown
 } from "lucide-react";
+import { adminFetch } from "@/lib/adminFetch";
 
 type Receipt = {
   id: string;
@@ -50,7 +51,7 @@ export default function AdminPOSPage() {
 
   const loadReceipts = useCallback(async () => {
     try {
-      const res = await fetch("/api/admin/pos");
+      const res = await adminFetch("/api/admin/pos");
       const data = await res.json();
       if (data.ok) setReceipts(data.receipts || []);
     } catch (e) {
